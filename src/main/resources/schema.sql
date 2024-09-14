@@ -1,0 +1,7 @@
+CREATE TABLE IF NOT EXISTS users (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    student_id VARCHAR(20) NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    first_login BOOLEAN DEFAULT TRUE,
+    role VARCHAR(20) NOT NULL
+);
