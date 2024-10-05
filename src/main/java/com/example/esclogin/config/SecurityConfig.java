@@ -13,6 +13,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.FilterChainProxy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.firewall.HttpFirewall;
+import org.springframework.security.web.firewall.StrictHttpFirewall;
 
 @Configuration
 @EnableWebSecurity
@@ -24,6 +26,14 @@ public class SecurityConfig {
     public SecurityConfig(AuthenticationConfiguration authenticationConfiguration, JWTUtil jwtUtil) {
         this.authenticationConfiguration = authenticationConfiguration;
         this.jwtUtil = jwtUtil;
+    }
+
+    @Bean
+    public HttpFirewall customHttpFirewall() {
+        StrictHttpFirewall firewall = new StrictHttpFirewall();
+        firewall.setAllowUrlEncodedSlash(true);  // 예시로 다른 인코딩을 허용하는 설정
+        // 필요하다면 다른 설정 추가
+        return firewall;
     }
 
     @Bean
@@ -39,7 +49,7 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .authorizeHttpRequests((auth)->auth
-                        .requestMatchers("/","/login","/join").permitAll()
+                        .requestMatchers("/","/login","/join","/api/auth/**").permitAll()
                         .requestMatchers("/admin").hasRole("ADMIN")
                         .requestMatchers("my/**").hasAnyRole("ADMIN","USER")
                         .anyRequest().authenticated()
