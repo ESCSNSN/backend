@@ -1,16 +1,18 @@
 package com.example.esclogin.config;
 
+import com.example.esclogin.jwt.JWTAuthorizationFilter;
 import com.example.esclogin.jwt.JWTUtil;
 import com.example.esclogin.jwt.LoginFilter;
+import com.example.esclogin.jwt.TemporaryJWTUtil;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.web.FilterChainProxy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.firewall.HttpFirewall;
@@ -22,10 +24,16 @@ public class SecurityConfig {
 
     private  final AuthenticationConfiguration authenticationConfiguration;
     private final JWTUtil jwtUtil;
+    private final TemporaryJWTUtil temporaryJWTUtil;
 
-    public SecurityConfig(AuthenticationConfiguration authenticationConfiguration, JWTUtil jwtUtil) {
+
+
+    public SecurityConfig(AuthenticationConfiguration authenticationConfiguration, JWTUtil jwtUtil, TemporaryJWTUtil temporaryJWTUtil) {
         this.authenticationConfiguration = authenticationConfiguration;
         this.jwtUtil = jwtUtil;
+        this.temporaryJWTUtil = temporaryJWTUtil;
+
+
     }
 
     @Bean
@@ -46,6 +54,28 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
     @Bean
+    @Order(1) // 우선순위가 높은 순으로 설정
+    public SecurityFilterChain registerEmailFilterChain(HttpSecurity http) throws Exception {
+        JWTAuthorizationFilter jwtAuthorizationFilter = new JWTAuthorizationFilter(jwtUtil);
+
+        http
+                .securityMatcher("/api/auth/register-email", "/api/auth/confirm-email") // 특정 엔드포인트에만 적용
+                .authorizeHttpRequests(auth -> auth
+                        .anyRequest().authenticated() // 인증 필요
+                )
+                .addFilterBefore(jwtAuthorizationFilter, UsernamePasswordAuthenticationFilter.class)
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                );
+        http
+                .csrf((auth) -> auth.disable());
+
+        return http.build();
+    }
+
+
+    @Bean
+    @Order(2)
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .authorizeHttpRequests((auth)->auth

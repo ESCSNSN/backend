@@ -1,16 +1,22 @@
 package com.example.esclogin.controller;
 
+import com.example.esclogin.entity.UserEntity;
+import com.example.esclogin.jwt.JWTUtil;
+import com.example.esclogin.repository.UserRepository;
 import com.example.esclogin.service.EmailService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import com.example.esclogin.jwt.TemporaryJWTUtil;
+
+import java.util.Optional;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import jakarta.servlet.http.HttpServletResponse;
 import com.example.esclogin.util.PasswordValidator;
 import com.example.esclogin.service.UserService;
@@ -19,22 +25,26 @@ import com.example.esclogin.service.UserService;
 @RequestMapping("/api/auth")
 @CrossOrigin(origins = "*")
 public class AuthController {
+    private static final Logger logger = LoggerFactory.getLogger(AuthController.class); // Logger 초기화
 
     private final EmailService emailService;
     private final ConcurrentHashMap<String, String> emailCodeMap = new ConcurrentHashMap<>();
     private final TemporaryJWTUtil temporaryJWTUtil;
     private final PasswordValidator passwordValidator;
     private final UserService userService;
-
-
+    private final UserRepository userRepository;
+    private final ConcurrentHashMap<Long, String> emailRegisterCodeMap = new ConcurrentHashMap<>();
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+    private final JWTUtil jwtUtil;
 
     @Autowired
-    public AuthController(EmailService emailService, TemporaryJWTUtil TemporaryJWTUtil, PasswordValidator passwordValidator, UserService userService) {
+    public AuthController(EmailService emailService, TemporaryJWTUtil TemporaryJWTUtil, PasswordValidator passwordValidator, UserService userService, UserRepository userRepository, JWTUtil jwtUtil) {
         this.emailService = emailService;
         this.temporaryJWTUtil = TemporaryJWTUtil;
         this.passwordValidator = passwordValidator;
         this.userService = userService;
+        this.userRepository = userRepository;
+        this.jwtUtil = jwtUtil;
     }
 
     // @RequestBody 대신 @RequestParam으로 수정
@@ -81,6 +91,122 @@ public class AuthController {
             return ResponseEntity.status(400).body("Invalid verification code.");
         }
     }
+
+    @PostMapping("/register-email")
+    public ResponseEntity<String> registerEmail(@RequestParam String newEmail,
+                                                @RequestHeader("Authorization") String authorizationHeader) {
+        // Authorization 헤더에서 토큰 추출
+
+        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
+            logger.warn("Authorization header missing or invalid.");
+            return ResponseEntity.status(401).body("Authorization header missing or invalid.");
+        }
+
+        String token = authorizationHeader.substring(7);
+        logger.debug("Extracted token: {}", token);
+
+        // JWTUtil을 사용하여 토큰 검증
+
+        boolean isValid = jwtUtil.validateToken(token);
+        logger.debug("Token valid: {}", isValid);
+
+        if (!isValid) {
+            logger.warn("Invalid or expired token.");
+            return ResponseEntity.status(401).body("Invalid or expired token.");
+        }
+
+        // 토큰에서 username 추출
+        String username = jwtUtil.getUsername(token);
+        logger.debug("Current username from token: {}", username);
+
+        // 사용자 조회
+        Optional<UserEntity> optionalUser = userService.findByUsername(username);
+        if (optionalUser.isEmpty()) {
+            logger.warn("User not found for username: {}", username);
+            return ResponseEntity.status(404).body("User not found.");
+        }
+
+        UserEntity user = optionalUser.get();
+
+        // 이미 이메일이 등록되어 있는지 확인
+        if (user.getEmail() != null && !user.getEmail().isEmpty()) {
+            logger.warn("Email is already registered for user: {}", username);
+            return ResponseEntity.status(400).body("Email is already registered.");
+        }
+
+        // 새로운 이메일로 인증 코드 생성 및 전송
+        String verificationCode = generateCode();
+        emailRegisterCodeMap.put((long) user.getId(), verificationCode);
+        logger.debug("Generated verification code: {} for user ID: {}", verificationCode, user.getId());
+
+        // 인증 코드 만료 설정 (15분 후 제거)
+        scheduler.schedule(() -> {
+            emailRegisterCodeMap.remove((long) user.getId());
+            logger.info("Email registration verification code for user ID {} has expired and removed.", user.getId());
+        }, 15, TimeUnit.MINUTES);
+
+        // 이메일 전송
+        String subject = "Email Registration Verification";
+        String content = "Your email registration verification code is: " + verificationCode;
+        emailService.sendEmail(newEmail, subject, content);
+        logger.info("Verification code sent to {}", newEmail);
+
+        return ResponseEntity.ok("Verification code sent to " + newEmail + " for email registration.");
+    }
+
+    @PostMapping("/confirm-email")
+    public ResponseEntity<String> confirmEmail(@RequestParam String verificationCode, @RequestParam String email,
+                                               @RequestHeader("Authorization") String authorizationHeader) {
+        // Authorization 헤더에서 토큰 추출
+        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
+            logger.warn("Authorization header missing or invalid.");
+            return ResponseEntity.status(401).body("Authorization header missing or invalid.");
+        }
+
+        String token = authorizationHeader.substring(7);
+        logger.debug("Extracted temporary token: {}", token);
+
+        // TemporaryJWTUtil을 사용하여 토큰 검증
+        boolean isValid = jwtUtil.validateToken(token);
+        logger.debug("Temporary Token valid: {}", isValid);
+
+        if (!isValid) {
+            logger.warn("Invalid or expired temporary token.");
+            return ResponseEntity.status(401).body("Invalid or expired token.");
+        }
+
+        // 토큰에서 email 추출
+        String username = jwtUtil.getUsername(token);
+        logger.debug("Username from token: {}", username);
+
+        // 사용자 조회
+        Optional<UserEntity> optionalUser = userService.findByUsername(username);
+        if (optionalUser.isEmpty()) {
+            logger.warn("User not found for username!: {}", username);
+            return ResponseEntity.status(404).body("User not found.");
+        }
+
+        UserEntity user = optionalUser.get();
+
+        // 인증 코드 확인
+        String storedCode = emailRegisterCodeMap.get((long) user.getId());
+        if (storedCode == null || !storedCode.equals(verificationCode)) {
+            logger.warn("Invalid verification code for user ID: {}", (long) user.getId());
+            return ResponseEntity.status(400).body("Invalid verification code.");
+        }
+
+        // 이메일 등록 로직
+        user.setEmail(email);
+        userService.saveUser(user);
+        logger.info("Email {} has been successfully registered for user ID {}", email, (long)user.getId());
+
+        // 인증 코드 제거
+        emailRegisterCodeMap.remove((long)user.getId());
+
+        return ResponseEntity.ok("Email has been successfully registered.");
+    }
+
+
 
     @PostMapping("/change-password")
     public ResponseEntity<String> changePassword(

@@ -33,5 +33,29 @@ public class UserService {
         userRepository.save(user);
         return true;
     }
+    // 이메일으로 사용자 조회 메서드
+    public Optional<UserEntity> findByEmail(String email) {
+        return userRepository.findByEmail(email);
+    }
+
+    // 사용자 저장 메서드
+    public void saveUser(UserEntity user) {
+        userRepository.save(user);
+    }
+
+    public boolean updateEmail(String username, String newEmail) {
+        Optional<UserEntity> optionalUser = findByUsername(username);
+        if (optionalUser.isPresent()) {
+            UserEntity user = optionalUser.get();
+            user.setEmail(newEmail);
+            userRepository.save(user);
+            return true;
+        }
+        return false;
+    }
+
+    public Optional<UserEntity> findByUsername(String username) {
+        return Optional.ofNullable(userRepository.findByUsername(username));
+    }
 }
 
