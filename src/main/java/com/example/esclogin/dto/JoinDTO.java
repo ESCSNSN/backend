@@ -9,4 +9,12 @@ public class JoinDTO {
     private String password;
     private String email;
     private String name;
+    private String role;
+
+    public String getRole(){
+        return role;
+    }
+    public void setRole(String role){
+        this.role = role;
+    }
 }

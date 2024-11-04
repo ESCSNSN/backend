@@ -4,6 +4,7 @@ import com.example.esclogin.jwt.JWTAuthorizationFilter;
 import com.example.esclogin.jwt.JWTUtil;
 import com.example.esclogin.jwt.LoginFilter;
 import com.example.esclogin.jwt.TemporaryJWTUtil;
+import com.example.esclogin.repository.UserRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -27,12 +28,10 @@ public class SecurityConfig {
     private final TemporaryJWTUtil temporaryJWTUtil;
 
 
-
     public SecurityConfig(AuthenticationConfiguration authenticationConfiguration, JWTUtil jwtUtil, TemporaryJWTUtil temporaryJWTUtil) {
         this.authenticationConfiguration = authenticationConfiguration;
         this.jwtUtil = jwtUtil;
         this.temporaryJWTUtil = temporaryJWTUtil;
-
 
     }
 
@@ -60,6 +59,7 @@ public class SecurityConfig {
 
         http
                 .securityMatcher("/api/auth/register-email", "/api/auth/confirm-email") // 특정 엔드포인트에만 적용
+
                 .authorizeHttpRequests(auth -> auth
                         .anyRequest().authenticated() // 인증 필요
                 )
@@ -79,7 +79,7 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .authorizeHttpRequests((auth)->auth
-                        .requestMatchers("/","/login","/join","/api/auth/**").permitAll()
+                        .requestMatchers("/","/login","/join","/api/auth/send-email","/api/auth/**").permitAll()
                         .requestMatchers("/admin").hasRole("ADMIN")
                         .requestMatchers("my/**").hasAnyRole("ADMIN","USER")
                         .anyRequest().authenticated()
