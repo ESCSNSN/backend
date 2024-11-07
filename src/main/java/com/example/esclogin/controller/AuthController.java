@@ -5,6 +5,7 @@ import com.example.esclogin.jwt.JWTUtil;
 import com.example.esclogin.repository.UserRepository;
 import com.example.esclogin.service.EmailService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import com.example.esclogin.jwt.TemporaryJWTUtil;
@@ -20,6 +21,8 @@ import org.slf4j.LoggerFactory;
 import jakarta.servlet.http.HttpServletResponse;
 import com.example.esclogin.util.PasswordValidator;
 import com.example.esclogin.service.UserService;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -46,6 +49,7 @@ public class AuthController {
         this.userRepository = userRepository;
         this.jwtUtil = jwtUtil;
     }
+
 
     // @RequestBody 대신 @RequestParam으로 수정
     @PostMapping("/send-email")
