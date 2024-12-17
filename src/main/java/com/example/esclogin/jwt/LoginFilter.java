@@ -1,5 +1,6 @@
 package com.example.esclogin.jwt;
 import com.example.esclogin.dto.CustomUserDetails;
+import com.example.esclogin.repository.UserRepository;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
@@ -9,35 +10,52 @@ import org.springframework.security.authentication.AuthenticationManager;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.FilterChain;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.io.IOException;
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.Map;
 
 
 public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
     private final AuthenticationManager authenticationManager;
     private final JWTUtil jwtUtil;
+    private final UserRepository userRepository;
 
-    public LoginFilter(AuthenticationManager authenticationManager, JWTUtil jwtUtil) {
+    public LoginFilter(AuthenticationManager authenticationManager, JWTUtil jwtUtil, UserRepository userRepository) {
 
         this.authenticationManager = authenticationManager;
         this.jwtUtil = jwtUtil;
+        this.userRepository = userRepository;
     }
 
     @Override
     public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response) throws AuthenticationException {
+        // JSON 바디에서 username과 password를 추출하기 위해 ObjectMapper 사용
+        ObjectMapper objectMapper = new ObjectMapper();
+        String username = "";
+        String password = "";
 
-        //클라이언트 요청에서 username, password 추출
-        String username = obtainUsername(request);
-        String password = obtainPassword(request);
+        try {
+            // JSON 파싱
+            Map<String, String> requestMap = objectMapper.readValue(request.getInputStream(), Map.class);
+            username = requestMap.get("username");
+            password = requestMap.get("password");
 
-        System.out.println(username);
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Request body 파싱 오류");
+        }
 
-        //스프링 시큐리티에서 username과 password를 검증하기 위해서는 token에 담아야 함
+        // 로그 출력
+        System.out.println("Username: " + username);
+
+        // UsernamePasswordAuthenticationToken 생성
         UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(username, password, null);
 
-        //token에 담은 검증을 위한 AuthenticationManager로 전달
+        // AuthenticationManager로 전달하여 인증 수행
         return authenticationManager.authenticate(authToken);
     }
 
@@ -52,9 +70,13 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
         String role = auth.getAuthority();
 
-        String token = jwtUtil.createJwt(username, role, 60*60*10*1000L);
+        String accessToken = jwtUtil.createJwt(username, role, 15*60*1000L);
+        String refreshToken = jwtUtil.createRefreshToken(username, 7 * 24 * 60 * 60 * 1000L);
 
-        response.addHeader("Authorization", "Bearer " + token);
+        userRepository.updateRefreshToken(username, refreshToken);
+
+        response.addHeader("Authorization", "Bearer " + accessToken);
+        response.addHeader("RefreshToken", refreshToken);
     }
 
     //로그인 실패시 실행하는 메소드

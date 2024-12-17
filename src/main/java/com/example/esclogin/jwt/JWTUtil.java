@@ -62,6 +62,16 @@ public class JWTUtil {
                 .compact();
     }
 
+    // Refresh Token 생성 메서드
+    public String createRefreshToken(String username, Long expiredMs) {
+        return Jwts.builder()
+                .claim("username", username)
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setExpiration(new Date(System.currentTimeMillis() + expiredMs))
+                .signWith(secretKey, SignatureAlgorithm.HS256)
+                .compact();
+    }
+
     // 토큰 검증 메서드 추가
     public boolean validateToken(String token) {
         try {
