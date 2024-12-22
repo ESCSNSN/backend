@@ -136,8 +136,10 @@ public class AuthController {
     @PostMapping("/register-email")
     public ResponseEntity<String> registerEmail(@RequestParam String newEmail,
                                                 @RequestHeader("Authorization") String authorizationHeader) {
-        // Authorization 헤더에서 토큰 추출
 
+
+
+        // Authorization 헤더에서 토큰 추출
         if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
             logger.warn("Authorization header missing or invalid.");
             return ResponseEntity.status(401).body("Authorization header missing or invalid.");
