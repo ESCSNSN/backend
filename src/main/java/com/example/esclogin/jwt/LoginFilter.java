@@ -70,7 +70,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
         String role = auth.getAuthority();
 
-        String accessToken = jwtUtil.createJwt(username, role, 15*60*1000L);
+        String accessToken = jwtUtil.createJwt(username, role, 15*60*60*60*60*1000L);
         String refreshToken = jwtUtil.createRefreshToken(username, 7 * 24 * 60 * 60 * 1000L);
 
         userRepository.updateRefreshToken(username, refreshToken);

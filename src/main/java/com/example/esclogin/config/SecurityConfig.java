@@ -8,6 +8,7 @@ import com.example.esclogin.repository.UserRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -59,6 +60,22 @@ public class SecurityConfig {
     public BCryptPasswordEncoder bCryptPasswordEncoder() {
         return new BCryptPasswordEncoder();
     }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000","https://119eddbfb3ba.ngrok.app")); // 프론트엔드 주소
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS")); // 허용할 HTTP 메소드
+        configuration.setAllowedHeaders(Arrays.asList("*")); // 허용할 헤더
+        configuration.setExposedHeaders(Arrays.asList("Authorization", "Refreshtoken")); // expose 할 헤더
+
+        configuration.setAllowCredentials(true); // 인증 정보를 포함한 요청 허용
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration); // 모든 엔드포인트에 적용
+        return source;
+    }
+
     @Bean
     @Order(1) // 우선순위가 높은 순으로 설정
     public SecurityFilterChain registerEmailFilterChain(HttpSecurity http) throws Exception {
@@ -68,15 +85,13 @@ public class SecurityConfig {
                 .securityMatcher("/api/auth/register-email", "/api/auth/confirm-email") // 특정 엔드포인트에만 적용
 
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .anyRequest().authenticated() // 인증 필요
                 )
                 .addFilterBefore(jwtAuthorizationFilter, UsernamePasswordAuthenticationFilter.class)
                 .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                );
-        http
-                .csrf((auth) -> auth.disable());
-        http
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .csrf((auth) -> auth.disable())
                 .cors((cors) -> cors.configurationSource(corsConfigurationSource()));
 
         return http.build();
@@ -88,19 +103,17 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .authorizeHttpRequests((auth) -> auth
-                        .requestMatchers("/", "/login", "/join", "/api/auth/send-email", "/api/auth/**").permitAll()
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers("/", "/login", "/join", "/api/auth/**").permitAll()
                         .requestMatchers("/api/auth/refresh").permitAll() // Refresh Token 재발급 엔드포인트
-                        .requestMatchers("/admin").hasRole("ADMIN")
-                        .requestMatchers("my/**").hasAnyRole("ADMIN", "USER")
+                        .requestMatchers("/admin").hasRole("admin")
+                        .requestMatchers("my/**").hasAnyRole("admin", "STUDENT")
                         .anyRequest().authenticated()
-                );
+                )
 
         // LoginFilter에서 Access Token + Refresh Token 발급
-        http
                 .addFilterAt(new LoginFilter(authenticationManager(authenticationConfiguration), jwtUtil, userRepository),
-                        UsernamePasswordAuthenticationFilter.class);
-
-        http
+                        UsernamePasswordAuthenticationFilter.class)
                 .formLogin(auth -> auth.disable())
                 .httpBasic(auth -> auth.disable())
                 .csrf(auth -> auth.disable())
@@ -109,18 +122,5 @@ public class SecurityConfig {
 
         return http.build();
     }
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000","https://97c2-2001-2d8-e249-5492-f0c0-56ec-6533-774b.ngrok-free.app")); // 프론트엔드 주소
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS")); // 허용할 HTTP 메소드
-        configuration.setAllowedHeaders(Arrays.asList("*")); // 허용할 헤더
-        configuration.setExposedHeaders(Arrays.asList("Authorization")); // expose 할 헤더
 
-        configuration.setAllowCredentials(true); // 인증 정보를 포함한 요청 허용
-
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration); // 모든 엔드포인트에 적용
-        return source;
-    }
 }

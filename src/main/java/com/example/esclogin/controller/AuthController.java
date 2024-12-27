@@ -85,6 +85,18 @@ public class AuthController {
             return ResponseEntity.ok(Map.of("isValid", false));
         }
     }
+    @GetMapping("/get-username")
+    public ResponseEntity<?> getUsername(@RequestHeader("Authorization") String authorizationHeader) {
+        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(401).body("Unauthorized");
+        }
+        if (jwtUtil.validateToken(authorizationHeader.substring(7))) {
+            String username = jwtUtil.getUsername(authorizationHeader.substring(7));
+            return ResponseEntity.ok(Map.of("userId", username));
+        } else {
+            return ResponseEntity.status(401).body("Unauthorized");
+        }
+    }
 
 
 
