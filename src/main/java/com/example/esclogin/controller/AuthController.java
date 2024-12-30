@@ -117,11 +117,20 @@ public class AuthController {
 
         // 이메일 전송
         String subject = "Email Verification";
-        String content = "Your verification code is: " + verificationCode;
-        emailService.sendEmail(email, subject, content);
+        String templateName = "email.html";
+
+        try {
+            emailService.sendHtmlEmail(email, subject, verificationCode, templateName);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to send email.");
+        }
+
 
         return ResponseEntity.ok("Verification code sent to " + email);
     }
+
+
 
     // 6자리 랜덤 숫자 생성 메서드
     private String generateCode() {
@@ -203,7 +212,7 @@ public class AuthController {
         // 이메일 전송
         String subject = "Email Registration Verification";
         String content = "Your email registration verification code is: " + verificationCode;
-        emailService.sendEmail(newEmail, subject, content);
+
         logger.info("Verification code sent to {}", newEmail);
 
         return ResponseEntity.ok("Verification code sent to " + newEmail + " for email registration.");
