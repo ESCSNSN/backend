@@ -44,3 +44,14 @@ dependencies {
 tasks.named('test') {
     useJUnitPlatform()
 }
+
+jar {
+    archiveBaseName.set("esclogin")
+    archiveVersion.set("1.0")
+}
+
+bootJar {
+    archiveBaseName.set("esclogin")
+    archiveVersion.set("1.0")
+}
+
