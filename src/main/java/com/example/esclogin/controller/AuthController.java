@@ -121,6 +121,7 @@ public class AuthController {
 
         try {
             emailService.sendHtmlEmail(email, subject, verificationCode, templateName);
+            System.out.println(verificationCode);
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to send email.");

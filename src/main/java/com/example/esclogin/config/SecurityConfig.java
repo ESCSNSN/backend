@@ -104,7 +104,7 @@ public class SecurityConfig {
         http
                 .authorizeHttpRequests((auth) -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/", "/login", "/api/auth/**").permitAll()
+                        .requestMatchers("/", "/login", "/api/auth/**","/join").permitAll()
                         .requestMatchers("/api/auth/refresh").permitAll() // Refresh Token 재발급 엔드포인트
                         .requestMatchers("/admin").hasRole("admin")
                         .requestMatchers("my/**").hasAnyRole("admin", "STUDENT")
