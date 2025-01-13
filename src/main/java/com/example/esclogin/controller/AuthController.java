@@ -53,17 +53,20 @@ public class AuthController {
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<?> refreshAccessToken(@RequestBody Map<String, String> request) {
-        String refreshToken = request.get("refreshToken");
+    public ResponseEntity<?> refreshAccessToken(@RequestHeader("Authorization") String authorizationHeader) {
+        String refreshToken = authorizationHeader.replace("Bearer ", "").trim();
 
         if (jwtUtil.validateToken(refreshToken)) {
             String username = jwtUtil.getUsername(refreshToken);
+            String role = jwtUtil.getRole(refreshToken);
             UserEntity user = userRepository.findByUsername(username);
 
             // 서버에 저장된 Refresh Token과 일치하는지 확인
             if (user.getRefreshToken().equals(refreshToken)) {
-                String newAccessToken = jwtUtil.createJwt(username, "ROLE_USER", 15 * 60 * 1000L);
-                return ResponseEntity.ok(Map.of("accessToken", newAccessToken));
+                String newAccessToken = jwtUtil.createJwt(username, role, 15 * 60 * 1000L);
+                return ResponseEntity.ok()
+                        .header("Authorization", "Bearer " + newAccessToken)
+                        .body(Map.of("message", "Token refreshed successfully"));
             }
         }
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid Refresh Token");
