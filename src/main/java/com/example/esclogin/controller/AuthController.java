@@ -76,6 +76,9 @@ public class AuthController {
         if (jwtUtil.validateToken(token)) {
             String username = jwtUtil.getUsername(token);
             UserEntity user = userRepository.findByUsername(username);
+            if(user.isSuspended() == true){
+                return ResponseEntity.status(401).body("정지된 사용자 입니다.");
+            }
 
             // 검증 성공 시 반환
             return ResponseEntity.ok(Map.of(
@@ -106,7 +109,12 @@ public class AuthController {
     // @RequestBody 대신 @RequestParam으로 수정
     @PostMapping("/send-email")
     public ResponseEntity<String> sendEmail(@RequestParam String email) {
+
         System.out.println("Received email: " + email);
+
+        if (!email.endsWith("@inu.ac.kr")) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid email domain. Only @inu.ac.kr emails are allowed.");
+        }
 
         // 6자리 인증 코드 생성
         String verificationCode = generateCode();

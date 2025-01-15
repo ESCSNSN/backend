@@ -64,7 +64,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000","https://119eddbfb3ba.ngrok.app")); // 프론트엔드 주소
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000","https://119eddbfb3ba.ngrok.app", "http://192.168.0.36:3000","http://192.168.203.119:3000","http://127.0.0.1:5000","https://front-end-git-main-soyuns-projects-ecbdb426.vercel.app", "https://front-end**")); // 프론트엔드 주소
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS")); // 허용할 HTTP 메소드
         configuration.setAllowedHeaders(Arrays.asList("*")); // 허용할 헤더
         configuration.setExposedHeaders(Arrays.asList("Authorization", "Refreshtoken")); // expose 할 헤더
@@ -82,7 +82,7 @@ public class SecurityConfig {
         JWTAuthorizationFilter jwtAuthorizationFilter = new JWTAuthorizationFilter(jwtUtil);
 
         http
-                .securityMatcher("/api/auth/register-email", "/api/auth/confirm-email") // 특정 엔드포인트에만 적용
+                .securityMatcher("/api/auth/register-email", "/api/auth/confirm-email","/api/suspend/**") // 특정 엔드포인트에만 적용
 
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
