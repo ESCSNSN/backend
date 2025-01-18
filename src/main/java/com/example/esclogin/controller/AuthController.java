@@ -63,7 +63,7 @@ public class AuthController {
 
             // 서버에 저장된 Refresh Token과 일치하는지 확인
             if (user.getRefreshToken().equals(refreshToken)) {
-                String newAccessToken = jwtUtil.createJwt(username, role, 15 * 60 * 1000L);
+                String newAccessToken = jwtUtil.createJwt(username, role, 30 * 60 * 1000L);
                 return ResponseEntity.ok()
                         .header("Authorization", "Bearer " + newAccessToken)
                         .body(Map.of("message", "Token refreshed successfully"));
@@ -147,7 +147,7 @@ public class AuthController {
     // 6자리 랜덤 숫자 생성 메서드
     private String generateCode() {
         Random random = new Random();
-        int code = 100000 + random.nextInt(900000); // 100000 ~ 999999
+        int code = 100000 + random.nextInt(900000000); // 100000 ~ 999999
         return String.valueOf(code);
     }
 
@@ -155,7 +155,7 @@ public class AuthController {
     @PostMapping("/verify-code")
     public ResponseEntity<String> verifyCode(@RequestParam String email, @RequestParam String code, HttpServletResponse response) {
         String storedCode = emailCodeMap.get(email);
-        if (storedCode != null /*&& storedCode.equals(code)*/) {
+        if (storedCode != null && storedCode.equals(code)) {
             // 인증 성공 로직
             emailCodeMap.remove(email); // 코드 사용 후 제거
             String temporaryToken = temporaryJWTUtil.generateTemporaryToken(email);

@@ -70,13 +70,14 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
         String role = auth.getAuthority();
 
-        String accessToken = jwtUtil.createJwt(username, role, 15*60*60*60*60*1000L);
+        String accessToken = jwtUtil.createJwt(username, role, 360*60*60*1000L);
         String refreshToken = jwtUtil.createRefreshToken(username, 7 * 24 * 60 * 60 * 1000L);
 
         userRepository.updateRefreshToken(username, refreshToken);
 
         response.addHeader("Authorization", "Bearer " + accessToken);
         response.addHeader("RefreshToken", refreshToken);
+        response.addHeader("role", role);
     }
 
     //로그인 실패시 실행하는 메소드
